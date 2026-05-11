@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PXB-11 Spirit Box</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --panel: #111;
+    --border: #222;
+    --display-bg: #0d1f0d;
+    --display-glow: #00ff41;
+    --display-dim: #004010;
+    --red: #ff2020;
+    --amber: #ff9900;
+    --led-on: #ff0000;
+    --led-off: #300000;
+    --btn-bg: #1a1a1a;
+    --btn-top: #252525;
+    --screw: #333;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050505;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--display-glow);
+    padding: 20px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  h1.title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(0.7rem, 2.5vw, 1rem);
+    letter-spacing: 0.3em;
+    color: #444;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .device {
+    width: min(400px, 95vw);
+    background: linear-gradient(180deg, #1c1c1c 0%, #111 40%, #0d0d0d 100%);
+    border-radius: 18px;
+    border: 2px solid #2a2a2a;
+    box-shadow:
+      0 0 0 1px #000,
+      0 8px 40px rgba(0,0,0,0.9),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 20px;
+    position: relative;
+  }
+
+  /* Screws */
+  .screw {
+    position: absolute;
+    width: 10px; height: 10px;
+    background: radial-gradient(circle at 35% 35%, #555, #222);
+    border-radius: 50%;
+    border: 1px solid #000;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .screw::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) rotate(45deg);
+    width: 60%; height: 1px;
+    background: #111;
+    box-shadow: 0 0 0 0.5px #111;
+  }
+  .screw.tl { top: 10px; left: 10px; }
+  .screw.tr { top: 10px; right: 10px; }
+  .screw.bl { bottom: 10px; left: 10px; }
+  .screw.br { bottom: 10px; right: 10px; }
+
+  /* Brand */
+  .brand {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .brand-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #ccc;
+    letter-spacing: 0.15em;
+    text-shadow: 0 0 10px rgba(255,255,255,0.1);
+  }
+  .brand-sub {
+    font-size: 0.55rem;
+    color: #444;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+  }
+
+  /* LED indicators top */
+  .leds-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+  .led {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--led-off);
+    box-shadow: none;
+    transition: background 0.05s, box-shadow 0.05s;
+  }
+  .led.active {
+    background: var(--led-on);
+    box-shadow: 0 0 6px 2px rgba(255,30,30,0.8);
+  }
+
+  /* Main Display */
+  .display-outer {
+    background: #050505;
+    border-radius: 8px;
+    border: 2px solid #0a0a0a;
+    padding: 3px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+    margin-bottom: 14px;
+  }
+  .display {
+    background: var(--display-bg);
+    border-radius: 5px;
+    padding: 12px 14px;
+    min-height: 90px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #0a2a0a;
+    box-shadow:
+      inset 0 0 30px rgba(0,255,65,0.05),
+      0 0 20px rgba(0,255,65,0.08);
+  }
+  .display::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 4px
+    );
+    pointer-events: none;
+  }
+
+  .freq-label {
+    font-size: 0.55rem;
+    color: var(--display-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .freq-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: var(--display-glow);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(0,255,65,0.8), 0 0 40px rgba(0,255,65,0.3);
+    transition: color 0.05s;
+  }
+  .freq-unit {
+    font-size: 0.65rem;
+    color: var(--display-dim);
+    letter-spacing: 0.2em;
+  }
+  .status-line {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 0.55rem;
+    color: var(--display-dim);
+    letter-spacing: 0.15em;
+  }
+  .status-active {
+    color: var(--display-glow);
+    animation: blink 1s infinite;
+  }
+
+  /* Waveform */
+  .waveform-container {
+    margin-bottom: 14px;
+    background: #050f05;
+    border: 1px solid #0a1a0a;
+    border-radius: 5px;
+    padding: 4px;
+    height: 50px;
+    overflow: hidden;
+  }
+  canvas#waveform {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Sweep speed */
+  .sweep-section {
+    margin-bottom: 14px;
+  }
+  .section-label {
+    font-size: 0.5rem;
+    color: #333;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .speed-buttons {
+    display: flex;
+    gap: 4px;
+  }
+  .speed-btn {
+    flex: 1;
+    padding: 7px 4px;
+    background: linear-gradient(180deg, #1e1e1e, #141414);
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    color: #555;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    cursor: pointer;
+    text-align: center;
+    letter-spacing: 0.1em;
+    transition: all 0.1s;
+    box-shadow: 0 2px 0 #000;
+  }
+  .speed-btn:active { transform: translateY(1px); box-shadow: none; }
+  .speed-btn.selected {
+    background: linear-gradient(180deg, #0a2a0a, #051505);
+    border-color: var(--display-glow);
+    color: var(--display-glow);
+    box-shadow: 0 0 8px rgba(0,255,65,0.3), 0 2px 0 #000;
+  }
+
+  /* Direction */
+  .dir-buttons {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .dir-btn {
+    flex: 1;
+    padding: 8px;
+    background: linear-gradient(180deg, #1e1e1e, #141414);
+    border: 1px solid #2a2a2a;
+    border-radius: 5px;
+    color: #555;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-align: center;
+    letter-spacing: 0.1em;
+    box-shadow: 0 2px 0 #000;
+    transition: all 0.1s;
+  }
+  .dir-btn:active { transform: translateY(1px); box-shadow: none; }
+  .dir-btn.selected {
+    background: linear-gradient(180deg, #1a0a0a, #0d0505);
+    border-color: var(--amber);
+    color: var(--amber);
+    box-shadow: 0 0 8px rgba(255,153,0,0.3), 0 2px 0 #000;
+  }
+
+  /* Volume */
+  .vol-section {
+    margin-bottom: 14px;
+  }
+  .vol-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vol-label-sm { font-size: 0.55rem; color: #333; min-width: 20px; }
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: linear-gradient(90deg, var(--display-glow) var(--val, 70%), #1a1a1a var(--val, 70%));
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #555, #222);
+    border: 1px solid #000;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,255,65,0.4);
+  }
+
+  /* Main power button */
+  .controls-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .power-btn {
+    flex: 1;
+    padding: 14px;
+    background: linear-gradient(180deg, #1e0000, #110000);
+    border: 1px solid #3a0000;
+    border-radius: 8px;
+    color: #ff4444;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    box-shadow: 0 3px 0 #000, 0 0 10px rgba(255,0,0,0.1);
+    transition: all 0.1s;
+  }
+  .power-btn:active { transform: translateY(2px); box-shadow: none; }
+  .power-btn.on {
+    background: linear-gradient(180deg, #330000, #200000);
+    border-color: #ff2020;
+    color: #ff2020;
+    box-shadow: 0 3px 0 #000, 0 0 20px rgba(255,0,0,0.4);
+    animation: powerPulse 2s infinite;
+  }
+
+  .record-btn {
+    padding: 14px 18px;
+    background: linear-gradient(180deg, #1a1a1a, #111);
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    color: #444;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    box-shadow: 0 3px 0 #000;
+    transition: all 0.1s;
+  }
+  .record-btn:active { transform: translateY(2px); box-shadow: none; }
+  .record-btn.recording {
+    border-color: #ff2020;
+    color: #ff2020;
+    box-shadow: 0 3px 0 #000, 0 0 15px rgba(255,0,0,0.3);
+    animation: blink 0.5s infinite;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid #1a1a1a;
+  }
+  .band-info {
+    font-size: 0.5rem;
+    color: #333;
+    letter-spacing: 0.2em;
+  }
+  .signal-bars {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+  }
+  .bar {
+    width: 4px;
+    background: #1a1a1a;
+    border-radius: 1px;
+    transition: background 0.1s, box-shadow 0.1s;
+  }
+  .bar.b1 { height: 6px; }
+  .bar.b2 { height: 10px; }
+  .bar.b3 { height: 14px; }
+  .bar.b4 { height: 18px; }
+  .bar.b5 { height: 22px; }
+  .bar.lit { background: var(--display-glow); box-shadow: 0 0 4px rgba(0,255,65,0.5); }
+  .bar.lit.warn { background: var(--amber); box-shadow: 0 0 4px rgba(255,153,0,0.5); }
+
+  /* Ghost message overlay */
+  .ghost-msg {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-size: 0.55rem;
+    color: rgba(0,255,65,0.4);
+    letter-spacing: 0.1em;
+    animation: ghostFlicker 0.3s infinite;
+    pointer-events: none;
+  }
+
+  /* Animations */
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+  @keyframes powerPulse {
+    0%,100% { box-shadow: 0 3px 0 #000, 0 0 20px rgba(255,0,0,0.4); }
+    50% { box-shadow: 0 3px 0 #000, 0 0 35px rgba(255,0,0,0.7); }
+  }
+  @keyframes ghostFlicker {
+    0%,100% { opacity: 0.4; }
+    33% { opacity: 0.1; }
+    66% { opacity: 0.7; }
+  }
+
+  .noise-msg {
+    margin-top: 8px;
+    text-align: center;
+    font-size: 0.55rem;
+    color: #1a3a1a;
+    letter-spacing: 0.2em;
+    min-height: 14px;
+    transition: color 0.2s;
+  }
+  .noise-msg.active {
+    color: rgba(0,255,65,0.5);
+    animation: ghostFlicker 0.4s infinite;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="title">⚠ ITC Ghost Communication Device ⚠</h1>
+
+<div class="device">
+  <div class="screw tl"></div>
+  <div class="screw tr"></div>
+  <div class="screw bl"></div>
+  <div class="screw br"></div>
+
+  <div class="brand">
+    <div class="brand-name">PXB-11</div>
+    <div class="brand-sub">Dual Sweep Spirit Box · ITC</div>
+  </div>
+
+  <!-- LED row -->
+  <div class="leds-top">
+    <div class="led" id="led1"></div>
+    <div class="led" id="led2"></div>
+    <div class="led" id="led3"></div>
+    <div class="led" id="led4"></div>
+    <div class="led" id="led5"></div>
+  </div>
+
+  <!-- Main display -->
+  <div class="display-outer">
+    <div class="display">
+      <div class="freq-label">FM FREQUENCY</div>
+      <div class="freq-display" id="freqDisplay">88.0</div>
+      <div class="freq-unit">MHz</div>
+      <div class="status-line">
+        <span id="statusText">STANDBY</span>
+        <span id="sweepMode">SWEEP: OFF</span>
+      </div>
+      <div class="ghost-msg" id="ghostMsg"></div>
+    </div>
+  </div>
+
+  <!-- Waveform -->
+  <div class="waveform-container">
+    <canvas id="waveform"></canvas>
+  </div>
+
+  <!-- Sweep speed -->
+  <div class="sweep-section">
+    <div class="section-label">Sweep Speed</div>
+    <div class="speed-buttons">
+      <button class="speed-btn selected" data-speed="50">SLOW</button>
+      <button class="speed-btn" data-speed="25">MED</button>
+      <button class="speed-btn" data-speed="10">FAST</button>
+      <button class="speed-btn" data-speed="3">ULTRA</button>
+    </div>
+  </div>
+
+  <!-- Direction -->
+  <div class="section-label">Sweep Direction</div>
+  <div class="dir-buttons">
+    <button class="dir-btn selected" id="dirUp">▲ UP</button>
+    <button class="dir-btn" id="dirDown">▼ DOWN</button>
+    <button class="dir-btn" id="dirRand">⟳ RAND</button>
+  </div>
+
+  <!-- Volume -->
+  <div class="vol-section">
+    <div class="section-label">Volume</div>
+    <div class="vol-row">
+      <span class="vol-label-sm">▶</span>
+      <input type="range" id="volSlider" min="0" max="100" value="70">
+      <span class="vol-label-sm" id="volVal">70</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-row">
+    <button class="power-btn" id="powerBtn">⏻ POWER</button>
+    <button class="record-btn" id="recordBtn">⏺ REC</button>
+  </div>
+
+  <!-- Signal + band -->
+  <div class="bottom-bar">
+    <div class="band-info" id="bandInfo">BAND: FM 87.5–108 MHz</div>
+    <div class="signal-bars">
+      <div class="bar b1" id="sig1"></div>
+      <div class="bar b2" id="sig2"></div>
+      <div class="bar b3" id="sig3"></div>
+      <div class="bar b4" id="sig4"></div>
+      <div class="bar b5" id="sig5"></div>
+    </div>
+  </div>
+
+  <div class="noise-msg" id="noiseMsg">[ INITIALIZING... ]</div>
+</div>
+
+<script>
+// ─── Audio Engine ────────────────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let noiseNode = null;
+let noiseGain = null;
+let sweepOsc = null;
+let sweepGain = null;
+let filterNode = null;
+let amMod = null;
+let amGain = null;
+let isOn = false;
+let isRecording = false;
+let recorder = null;
+let recordedChunks = [];
+let mediaStream = null;
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.7;
+  masterGain.connect(audioCtx.destination);
+}
+
+function createSpiritBoxAudio() {
+  // White noise (base radio static)
+  const bufferSize = audioCtx.sampleRate * 2;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+
+  noiseNode = audioCtx.createBufferSource();
+  noiseNode.buffer = buffer;
+  noiseNode.loop = true;
+
+  // Band-pass filter simulating radio tuning
+  filterNode = audioCtx.createBiquadFilter();
+  filterNode.type = 'bandpass';
+  filterNode.frequency.value = 1200;
+  filterNode.Q.value = 0.8;
+
+  noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0.35;
+
+  // AM modulation (chopping effect = sweep illusion)
+  amMod = audioCtx.createOscillator();
+  amMod.type = 'sine';
+  amMod.frequency.value = 4;
+
+  amGain = audioCtx.createGain();
+  amGain.gain.value = 0.0;
+
+  amMod.connect(amGain);
+
+  // Sweep tone (low background hum shifting)
+  sweepOsc = audioCtx.createOscillator();
+  sweepOsc.type = 'sawtooth';
+  sweepOsc.frequency.value = 200;
+
+  sweepGain = audioCtx.createGain();
+  sweepGain.gain.value = 0.06;
+
+  noiseNode.connect(filterNode);
+  filterNode.connect(noiseGain);
+  noiseGain.connect(masterGain);
+
+  sweepOsc.connect(sweepGain);
+  sweepGain.connect(masterGain);
+
+  amMod.start();
+  noiseNode.start();
+  sweepOsc.start();
+}
+
+function stopSpiritBoxAudio() {
+  try { noiseNode && noiseNode.stop(); } catch(e){}
+  try { sweepOsc && sweepOsc.stop(); } catch(e){}
+  try { amMod && amMod.stop(); } catch(e){}
+  noiseNode = sweepOsc = amMod = null;
+}
+
+// ─── Frequency Sweep ─────────────────────────────────────────────────────────
+const FM_MIN = 87.5;
+const FM_MAX = 108.0;
+const FM_STEP = 0.1;
+
+let currentFreq = 88.0;
+let sweepInterval = null;
+let sweepSpeed = 50; // ms
+let sweepDirection = 'up'; // up | down | rand
+let sweepActive = false;
+
+const ghostWords = [
+  'HELP','HERE','YES','NO','COLD','DARK','LISTEN',
+  'COME','LOST','PAIN','NEAR','GONE','STAY','RUN',
+  'DOOR','LIGHT','SHADOW','WAIT','ECHO','HELLO',
+];
+
+function stepFreq() {
+  if (sweepDirection === 'rand') {
+    currentFreq = FM_MIN + Math.random() * (FM_MAX - FM_MIN);
+    currentFreq = Math.round(currentFreq * 10) / 10;
+  } else if (sweepDirection === 'up') {
+    currentFreq += FM_STEP;
+    if (currentFreq > FM_MAX) currentFreq = FM_MIN;
+    currentFreq = Math.round(currentFreq * 10) / 10;
+  } else {
+    currentFreq -= FM_STEP;
+    if (currentFreq < FM_MIN) currentFreq = FM_MAX;
+    currentFreq = Math.round(currentFreq * 10) / 10;
+  }
+
+  updateDisplay();
+  modulateAudio();
+  randomGhostEvent();
+}
+
+function modulateAudio() {
+  if (!filterNode) return;
+  // Map freq to filter cutoff for sweep feel
+  const t = (currentFreq - FM_MIN) / (FM_MAX - FM_MIN);
+  const cutoff = 400 + t * 3200;
+  filterNode.frequency.setTargetAtTime(cutoff, audioCtx.currentTime, 0.01);
+
+  if (sweepOsc) {
+    const hz = 80 + t * 800;
+    sweepOsc.frequency.setTargetAtTime(hz, audioCtx.currentTime, 0.02);
+  }
+
+  // Random static bursts
+  if (noiseGain) {
+    const vol = 0.2 + Math.random() * 0.4;
+    noiseGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.005);
+  }
+}
+
+let ghostTimeout = null;
+function randomGhostEvent() {
+  if (Math.random() < 0.03) {
+    const word = ghostWords[Math.floor(Math.random() * ghostWords.length)];
+    document.getElementById('ghostMsg').textContent = word;
+    document.getElementById('noiseMsg').textContent = `[ ${word} ]`;
+    document.getElementById('noiseMsg').classList.add('active');
+    clearTimeout(ghostTimeout);
+    ghostTimeout = setTimeout(() => {
+      document.getElementById('ghostMsg').textContent = '';
+      document.getElementById('noiseMsg').textContent = '';
+      document.getElementById('noiseMsg').classList.remove('active');
+    }, 400 + Math.random() * 600);
+  }
+}
+
+function startSweep() {
+  sweepActive = true;
+  clearInterval(sweepInterval);
+  sweepInterval = setInterval(stepFreq, sweepSpeed);
+  document.getElementById('sweepMode').textContent = 'SWEEP: ON';
+  document.getElementById('sweepMode').classList.add('status-active');
+}
+
+function stopSweep() {
+  sweepActive = false;
+  clearInterval(sweepInterval);
+  document.getElementById('sweepMode').textContent = 'SWEEP: OFF';
+  document.getElementById('sweepMode').classList.remove('status-active');
+}
+
+// ─── Display ─────────────────────────────────────────────────────────────────
+function updateDisplay() {
+  document.getElementById('freqDisplay').textContent = currentFreq.toFixed(1);
+  updateSignalBars();
+  updateLEDs();
+}
+
+function updateSignalBars() {
+  const strength = Math.floor(Math.random() * 5) + 1;
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('sig' + i);
+    el.classList.remove('lit', 'warn');
+    if (i <= strength) {
+      el.classList.add('lit');
+      if (strength >= 4) el.classList.add('warn');
+    }
+  }
+}
+
+function updateLEDs() {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('led' + i);
+    el.classList.toggle('active', Math.random() < 0.3);
+  }
+}
+
+// ─── Waveform Canvas ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('waveform');
+const ctx2d = canvas.getContext('2d');
+let wavePhase = 0;
+let animFrame = null;
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+
+function drawWaveform() {
+  resizeCanvas();
+  const W = canvas.width, H = canvas.height;
+  ctx2d.clearRect(0, 0, W, H);
+
+  if (!isOn) {
+    ctx2d.fillStyle = '#0a1a0a';
+    ctx2d.fillRect(0, 0, W, H);
+    animFrame = requestAnimationFrame(drawWaveform);
+    return;
+  }
+
+  ctx2d.fillStyle = 'rgba(5,15,5,0.4)';
+  ctx2d.fillRect(0, 0, W, H);
+
+  ctx2d.beginPath();
+  ctx2d.strokeStyle = 'rgba(0,255,65,0.8)';
+  ctx2d.lineWidth = 1.5;
+  ctx2d.shadowColor = '#00ff41';
+  ctx2d.shadowBlur = 4;
+
+  const amp = H * 0.35;
+  const freq = sweepActive ? (0.05 + (sweepSpeed < 15 ? 0.15 : 0.05)) : 0.02;
+
+  for (let x = 0; x < W; x++) {
+    const noise = (Math.random() - 0.5) * (sweepActive ? 14 : 2);
+    const y = H/2
+      + Math.sin((x + wavePhase) * freq * 2) * amp * 0.4
+      + Math.sin((x + wavePhase) * freq * 5) * amp * 0.25
+      + Math.sin((x + wavePhase) * freq * 13) * amp * 0.15
+      + noise;
+    if (x === 0) ctx2d.moveTo(x, y);
+    else ctx2d.lineTo(x, y);
+  }
+  ctx2d.stroke();
+  ctx2d.shadowBlur = 0;
+
+  wavePhase += sweepActive ? (sweepSpeed < 15 ? 6 : 3) : 0.5;
+  animFrame = requestAnimationFrame(drawWaveform);
+}
+
+// ─── Power ───────────────────────────────────────────────────────────────────
+document.getElementById('powerBtn').addEventListener('click', async () => {
+  if (!isOn) {
+    // TURN ON
+    if (!audioCtx) initAudio();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    createSpiritBoxAudio();
+    isOn = true;
+    document.getElementById('powerBtn').classList.add('on');
+    document.getElementById('powerBtn').textContent = '⏻ ON';
+    document.getElementById('statusText').textContent = 'SCANNING';
+    document.getElementById('statusText').classList.add('status-active');
+    document.getElementById('noiseMsg').textContent = '[ SCANNING FREQUENCIES... ]';
+    document.getElementById('noiseMsg').classList.add('active');
+    startSweep();
+    drawWaveform();
+  } else {
+    // TURN OFF
+    stopSweep();
+    stopSpiritBoxAudio();
+    isOn = false;
+    document.getElementById('powerBtn').classList.remove('on');
+    document.getElementById('powerBtn').textContent = '⏻ POWER';
+    document.getElementById('statusText').textContent = 'STANDBY';
+    document.getElementById('statusText').classList.remove('status-active');
+    document.getElementById('sweepMode').textContent = 'SWEEP: OFF';
+    document.getElementById('sweepMode').classList.remove('status-active');
+    document.getElementById('noiseMsg').textContent = '';
+    document.getElementById('noiseMsg').classList.remove('active');
+    document.getElementById('ghostMsg').textContent = '';
+    for (let i = 1; i <= 5; i++) {
+      document.getElementById('sig'+i).classList.remove('lit','warn');
+      document.getElementById('led'+i).classList.remove('active');
+    }
+    cancelAnimationFrame(animFrame);
+    resizeCanvas();
+  }
+});
+
+// ─── Speed Buttons ───────────────────────────────────────────────────────────
+document.querySelectorAll('.speed-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    sweepSpeed = parseInt(btn.dataset.speed);
+    if (sweepActive) {
+      clearInterval(sweepInterval);
+      sweepInterval = setInterval(stepFreq, sweepSpeed);
+    }
+  });
+});
+
+// ─── Direction Buttons ───────────────────────────────────────────────────────
+document.getElementById('dirUp').addEventListener('click', () => {
+  sweepDirection = 'up';
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('dirUp').classList.add('selected');
+});
+document.getElementById('dirDown').addEventListener('click', () => {
+  sweepDirection = 'down';
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('dirDown').classList.add('selected');
+});
+document.getElementById('dirRand').addEventListener('click', () => {
+  sweepDirection = 'rand';
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('dirRand').classList.add('selected');
+});
+
+// ─── Volume ──────────────────────────────────────────────────────────────────
+const volSlider = document.getElementById('volSlider');
+volSlider.addEventListener('input', () => {
+  const v = volSlider.value;
+  document.getElementById('volVal').textContent = v;
+  volSlider.style.setProperty('--val', v + '%');
+  if (masterGain) masterGain.gain.setTargetAtTime(v / 100, audioCtx.currentTime, 0.05);
+});
+volSlider.style.setProperty('--val', '70%');
+
+// ─── Record ──────────────────────────────────────────────────────────────────
+document.getElementById('recordBtn').addEventListener('click', async () => {
+  if (!isOn) return;
+
+  if (!isRecording) {
+    try {
+      const dest = audioCtx.createMediaStreamDestination();
+      masterGain.connect(dest);
+      mediaStream = dest.stream;
+      recorder = new MediaRecorder(mediaStream);
+      recordedChunks = [];
+      recorder.ondataavailable = e => recordedChunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'spiritbox_recording.webm';
+        a.click();
+      };
+      recorder.start();
+      isRecording = true;
+      document.getElementById('recordBtn').classList.add('recording');
+      document.getElementById('recordBtn').textContent = '⏹ STOP';
+    } catch(e) {
+      alert('Recording not supported in this browser.');
+    }
+  } else {
+    recorder.stop();
+    isRecording = false;
+    document.getElementById('recordBtn').classList.remove('recording');
+    document.getElementById('recordBtn').textContent = '⏺ REC';
+  }
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+drawWaveform();
+</script>
+</body>
+</html>
