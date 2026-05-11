@@ -31,7 +31,7 @@
 
 ## Wat is dit?
 
-De **PXB-11 SDR Spirit Box** is een browser-app die een klassieke ITC-spiritbox nabootst én kan koppelen aan een echte **RTL-SDR USB-dongle** om live FM-radiofrequenties te sweepen.
+De **PXB-12 SDR Spirit Box** is een browser-app die een klassieke ITC-spiritbox nabootst én kan koppelen aan een echte **RTL-SDR USB-dongle** om live FM-radiofrequenties te sweepen.
 
 ### Wat is een Spirit Box?
 
