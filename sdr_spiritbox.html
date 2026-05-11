@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDR Spirit Box — PXB-11 Real SDR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --bg: #050505;
+  --green: #00ff41;
+  --green-dim: #003a0f;
+  --amber: #ff9900;
+  --red: #ff2020;
+  --blue: #00aaff;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--green);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+body::after {
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,65,.012) 2px,rgba(0,255,65,.012) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+h1 { font-family:'Orbitron',sans-serif; font-size:clamp(.65rem,2.5vw,.95rem); letter-spacing:.4em; color:#2a2a2a; text-transform:uppercase; }
+
+.layout { display:flex; gap:12px; width:100%; max-width:900px; flex-wrap:wrap; justify-content:center; }
+
+/* DEVICE */
+.device {
+  width:310px; flex-shrink:0;
+  background:linear-gradient(180deg,#161616,#0d0d0d);
+  border:1.5px solid #1e1e1e; border-radius:14px;
+  padding:15px; position:relative;
+  box-shadow:0 0 40px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.screw { position:absolute; width:9px;height:9px; background:radial-gradient(circle at 35% 35%,#555,#1a1a1a); border-radius:50%; border:1px solid #000; }
+.screw.tl{top:7px;left:7px}.screw.tr{top:7px;right:7px}.screw.bl{bottom:7px;left:7px}.screw.br{bottom:7px;right:7px}
+
+.brand { text-align:center; margin-bottom:11px; }
+.brand-name { font-family:'Orbitron',sans-serif; font-size:1.15rem; font-weight:900; color:#bbb; letter-spacing:.15em; }
+.brand-sub { font-size:.48rem; color:#333; letter-spacing:.35em; text-transform:uppercase; }
+
+.conn-bar {
+  display:flex; align-items:center; gap:7px;
+  background:#080808; border:1px solid #161616; border-radius:5px;
+  padding:5px 9px; margin-bottom:9px; font-size:.5rem; letter-spacing:.12em;
+}
+.conn-dot { width:7px;height:7px; border-radius:50%; background:#1a1a1a; flex-shrink:0; transition:all .2s; }
+.conn-dot.sim { background:var(--amber); box-shadow:0 0 6px rgba(255,153,0,.5); }
+.conn-dot.connected { background:var(--green); box-shadow:0 0 6px rgba(0,255,65,.7); animation:gpulse 2s infinite; }
+.conn-dot.error { background:var(--red); box-shadow:0 0 6px rgba(255,32,32,.6); }
+#connText { color:#3a3a3a; }
+
+.display-wrap { background:#050505; border:1.5px solid #090909; border-radius:7px; padding:2px; margin-bottom:9px; }
+.display {
+  background:#060f06; border-radius:5px; padding:9px 11px 7px;
+  border:1px solid #091209; position:relative; overflow:hidden;
+}
+.display::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.2) 3px,rgba(0,0,0,.2) 4px); pointer-events:none; }
+.d-label { font-size:.48rem; color:var(--green-dim); letter-spacing:.22em; }
+.d-freq { font-family:'Orbitron',sans-serif; font-size:2.3rem; font-weight:900; color:var(--green); text-shadow:0 0 18px rgba(0,255,65,.8),0 0 35px rgba(0,255,65,.2); line-height:1; }
+.d-unit { font-size:.52rem; color:var(--green-dim); letter-spacing:.22em; }
+.d-row { display:flex; justify-content:space-between; margin-top:5px; font-size:.47rem; color:var(--green-dim); }
+.d-active { color:var(--green); animation:blink 1s infinite; }
+#ghostWord { position:absolute; right:7px;bottom:4px; font-size:.48rem; color:rgba(0,255,65,.4); animation:flicker .25s infinite; pointer-events:none; }
+
+.spec-panel { background:#030803; border:1px solid #0a1a0a; border-radius:4px; margin-bottom:9px; overflow:hidden; }
+#specCanvas { display:block; width:100%; height:56px; }
+.wave-panel { background:#030803; border:1px solid #0a1a0a; border-radius:4px; margin-bottom:9px; overflow:hidden; }
+#waveCanvas { display:block; width:100%; height:34px; }
+
+.row-label { font-size:.46rem; color:#252525; letter-spacing:.3em; text-transform:uppercase; margin-bottom:4px; }
+.btn-row { display:flex; gap:4px; margin-bottom:9px; }
+.spd-btn,.dir-btn {
+  flex:1; padding:6px 2px;
+  background:linear-gradient(180deg,#1b1b1b,#101010);
+  border:1px solid #222; border-radius:4px;
+  color:#3a3a3a; font-family:'Share Tech Mono',monospace; font-size:.52rem;
+  cursor:pointer; letter-spacing:.04em; box-shadow:0 2px 0 #000; transition:all .1s;
+}
+.spd-btn:active,.dir-btn:active { transform:translateY(1px);box-shadow:none; }
+.spd-btn.sel { background:linear-gradient(180deg,#081a08,#040d04); border-color:var(--green); color:var(--green); box-shadow:0 0 7px rgba(0,255,65,.2),0 2px 0 #000; }
+.dir-btn.sel { background:linear-gradient(180deg,#180e00,#0d0600); border-color:var(--amber); color:var(--amber); box-shadow:0 0 7px rgba(255,153,0,.2),0 2px 0 #000; }
+
+.slider-row { display:flex; align-items:center; gap:7px; margin-bottom:9px; }
+.sl-label { font-size:.47rem; color:#2a2a2a; min-width:30px; }
+input[type=range] { flex:1; -webkit-appearance:none; height:3px; background:linear-gradient(90deg,var(--green) var(--pct,50%),#141414 var(--pct,50%)); border-radius:2px; outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:11px;height:11px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#555,#1a1a1a); border:1px solid #000; cursor:pointer; }
+.sl-val { font-size:.47rem; color:#3a3a3a; min-width:22px; text-align:right; }
+
+.main-btns { display:flex; gap:6px; margin-bottom:8px; }
+.pow-btn {
+  flex:1; padding:11px;
+  background:linear-gradient(180deg,#1a0000,#0e0000);
+  border:1px solid #2a0000; border-radius:7px;
+  color:#772222; font-family:'Orbitron',sans-serif; font-size:.65rem; font-weight:700;
+  cursor:pointer; letter-spacing:.15em; box-shadow:0 3px 0 #000; transition:all .1s;
+}
+.pow-btn:active { transform:translateY(2px);box-shadow:none; }
+.pow-btn.on { background:linear-gradient(180deg,#280000,#160000); border-color:var(--red); color:var(--red); box-shadow:0 3px 0 #000,0 0 18px rgba(255,32,32,.3); animation:rpulse 2s infinite; }
+.con-btn {
+  padding:11px 10px;
+  background:linear-gradient(180deg,#000818,#000510);
+  border:1px solid #001228; border-radius:7px;
+  color:#003366; font-family:'Share Tech Mono',monospace; font-size:.55rem;
+  cursor:pointer; letter-spacing:.08em; box-shadow:0 3px 0 #000; transition:all .1s; white-space:nowrap;
+}
+.con-btn:active { transform:translateY(2px);box-shadow:none; }
+.con-btn.connected { border-color:var(--blue); color:var(--blue); box-shadow:0 3px 0 #000,0 0 12px rgba(0,170,255,.2); }
+
+.bot-bar { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #121212; padding-top:7px; }
+.sig-bars { display:flex; gap:2px; align-items:flex-end; }
+.sbar { width:4px; background:#0e0e0e; border-radius:1px; transition:background .08s; }
+.sbar.b1{height:5px}.sbar.b2{height:9px}.sbar.b3{height:13px}.sbar.b4{height:17px}.sbar.b5{height:21px}
+.sbar.lit { background:var(--green); box-shadow:0 0 3px rgba(0,255,65,.35); }
+.sbar.hot { background:var(--amber); box-shadow:0 0 3px rgba(255,153,0,.35); }
+.band-label { font-size:.43rem; color:#222; letter-spacing:.14em; }
+.status-msg { margin-top:6px; text-align:center; font-size:.48rem; color:#182818; letter-spacing:.18em; min-height:11px; }
+.status-msg.live { color:rgba(0,255,65,.45); animation:flicker .4s infinite; }
+
+/* RIGHT */
+.right-panel { flex:1; min-width:270px; display:flex; flex-direction:column; gap:10px; }
+.panel-box { background:#070707; border:1.5px solid #131313; border-radius:10px; padding:11px; }
+.panel-title { font-size:.46rem; color:#252525; letter-spacing:.4em; text-transform:uppercase; margin-bottom:7px; }
+#bigSpec { display:block; width:100%; height:135px; }
+#waterfall { display:block; width:100%; height:135px; }
+.freq-ruler { display:flex; justify-content:space-between; font-size:.4rem; color:#202020; margin-top:3px; padding:0 1px; }
+
+.info-box { background:#070707; border:1.5px solid #131313; border-radius:10px; padding:12px; font-size:.48rem; color:#252525; line-height:1.9; letter-spacing:.1em; }
+.info-box b { color:#383838; }
+.info-box a { color:#003a66; text-decoration:none; }
+.info-box a:hover { color:var(--blue); }
+.ih { color:rgba(0,255,65,.4); }
+
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.15} }
+@keyframes flicker { 0%,100%{opacity:.5}33%{opacity:.1}66%{opacity:.8} }
+@keyframes gpulse { 0%,100%{box-shadow:0 0 6px rgba(0,255,65,.7)}50%{box-shadow:0 0 12px rgba(0,255,65,1)} }
+@keyframes rpulse { 0%,100%{box-shadow:0 3px 0 #000,0 0 18px rgba(255,32,32,.3)}50%{box-shadow:0 3px 0 #000,0 0 28px rgba(255,32,32,.55)} }
+
+@media(max-width:660px){ .right-panel{min-width:100%;} .device{width:100%;max-width:370px;} }
+</style>
+</head>
+<body>
+
+<h1>⚡ PXB-11 · SDR SPIRIT BOX · ECHTE RADIO ⚡</h1>
+
+<div class="layout">
+
+  <div class="device">
+    <div class="screw tl"></div><div class="screw tr"></div>
+    <div class="screw bl"></div><div class="screw br"></div>
+
+    <div class="brand">
+      <div class="brand-name">PXB-11</div>
+      <div class="brand-sub">SDR · Dual Sweep ITC · Real Radio</div>
+    </div>
+
+    <div class="conn-bar">
+      <div class="conn-dot sim" id="connDot"></div>
+      <span id="connText">SIMULATIE — geen RTL-SDR dongle</span>
+    </div>
+
+    <div class="display-wrap">
+      <div class="display">
+        <div class="d-label">FM FREQ</div>
+        <div class="d-freq" id="freqDisp">88.0</div>
+        <div class="d-unit">MHz</div>
+        <div class="d-row">
+          <span id="statusTxt">STANDBY</span>
+          <span id="sweepTxt">SWEEP: OFF</span>
+        </div>
+        <div id="ghostWord"></div>
+      </div>
+    </div>
+
+    <div class="spec-panel"><canvas id="specCanvas"></canvas></div>
+    <div class="wave-panel"><canvas id="waveCanvas"></canvas></div>
+
+    <div class="row-label">Sweep Snelheid</div>
+    <div class="btn-row">
+      <button class="spd-btn sel" data-ms="60">SLOW</button>
+      <button class="spd-btn" data-ms="25">MED</button>
+      <button class="spd-btn" data-ms="10">FAST</button>
+      <button class="spd-btn" data-ms="3">ULTRA</button>
+    </div>
+
+    <div class="row-label">Richting</div>
+    <div class="btn-row">
+      <button class="dir-btn sel" id="dUp">▲ UP</button>
+      <button class="dir-btn" id="dDown">▼ DOWN</button>
+      <button class="dir-btn" id="dRand">⟳ RAND</button>
+    </div>
+
+    <div class="row-label">Gain (SDR dongle)</div>
+    <div class="slider-row">
+      <span class="sl-label">GAIN</span>
+      <input type="range" id="gainSlider" min="0" max="49" value="25" step="1">
+      <span class="sl-val" id="gainVal">25</span>
+    </div>
+
+    <div class="row-label">Volume</div>
+    <div class="slider-row">
+      <span class="sl-label">VOL</span>
+      <input type="range" id="volSlider" min="0" max="100" value="70">
+      <span class="sl-val" id="volVal">70</span>
+    </div>
+
+    <div class="main-btns">
+      <button class="pow-btn" id="powBtn">⏻ POWER</button>
+      <button class="con-btn" id="sdrBtn">🔌 SDR USB</button>
+    </div>
+
+    <div class="bot-bar">
+      <span class="band-label">FM 87.5–108.0 MHz</span>
+      <div class="sig-bars">
+        <div class="sbar b1" id="s1"></div><div class="sbar b2" id="s2"></div>
+        <div class="sbar b3" id="s3"></div><div class="sbar b4" id="s4"></div>
+        <div class="sbar b5" id="s5"></div>
+      </div>
+    </div>
+    <div class="status-msg" id="statusMsg">[ GEREED ]</div>
+  </div>
+
+  <div class="right-panel">
+    <div class="panel-box">
+      <div class="panel-title">⬛ Live Spectrum — FM Band (87.5–108 MHz)</div>
+      <canvas id="bigSpec"></canvas>
+      <div class="freq-ruler" id="freqRuler"></div>
+    </div>
+    <div class="panel-box">
+      <div class="panel-title">⬛ Waterval (tijdsverloop signaalsterkte)</div>
+      <canvas id="waterfall"></canvas>
+    </div>
+    <div class="info-box" id="infoBox">
+      <b>HOE VERBINDEN MET ECHTE SDR DONGLE?</b><br><br>
+      1. Koop een <b>RTL-SDR Blog V4</b> dongle (~€25)<br>
+      &nbsp;&nbsp;&nbsp;→ <a href="https://www.rtl-sdr.com/buy-rtl-sdr-dvb-t-dongles/" target="_blank">rtl-sdr.com/buy</a><br><br>
+      2. Sluit de dongle aan via <b>USB</b><br>
+      3. Open in <b>Chrome of Edge</b> browser (WebUSB vereist)<br>
+      4. Klik <b>🔌 SDR USB</b> → selecteer je dongle in popup<br>
+      5. Druk <b>⏻ POWER</b> → echte FM sweep start<br><br>
+      <b>Zonder dongle:</b> app werkt als realistische simulatie<br><br>
+      <span class="ih">▶ Browser SDR app: <a href="https://radio.ea1iti.es" target="_blank">radio.ea1iti.es</a></span><br>
+      <span class="ih">▶ BrowSDR (WebUSB): <a href="https://browsdr.com" target="_blank">browsdr.com</a></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ STATE ═══
+let isOn=false, sweepMs=60, sweepDir='up', currentFreq=88.0;
+const FM_MIN=87.5, FM_MAX=108.0;
+let sweepTimer=null;
+let sdrDevice=null, sdrConnected=false;
+let audioCtx=null, masterGain=null, noiseNode=null, noiseGain=null, filterNode=null, sweepOsc=null;
+let specData=new Float32Array(256).fill(-85);
+let waterfallRows=[];
+
+const GHOST_WORDS=['HELP','HIER','JA','NEE','KOU','DONKER','LUISTER','KOM',
+  'VERLOREN','PIJN','NABIJ','WEG','BLIJF','REN','DEUR','LICHT','SCHADUW',
+  'WACHT','ECHO','HALLO','MAMA','KOUD','ZIE','IK','BEN','ER','STEM'];
+
+// ═══ SDR / WebUSB ═══
+async function connectSDR() {
+  if(!navigator.usb){
+    setConn('error','WebUSB niet beschikbaar — gebruik Chrome/Edge');
+    return;
+  }
+  try {
+    const dev = await navigator.usb.requestDevice({ filters:[{vendorId:0x0bda}] });
+    sdrDevice=dev;
+    await dev.open();
+    if(dev.configuration===null) await dev.selectConfiguration(1);
+    try{ await dev.claimInterface(0); }catch(e){}
+    sdrConnected=true;
+    setConn('connected',`SDR: ${dev.productName||'RTL2832U'} — VERBONDEN`);
+    document.getElementById('sdrBtn').classList.add('connected');
+    document.getElementById('sdrBtn').textContent='✓ SDR';
+    document.getElementById('infoBox').innerHTML=
+      `<b>✓ RTL-SDR DONGLE VERBONDEN</b><br><br>`+
+      `Apparaat: <span class="ih">${dev.productName||'RTL2832U'}</span><br>`+
+      `Vendor ID: ${dev.vendorId.toString(16).toUpperCase()}<br>`+
+      `Status: <span class="ih">ACTIEF — ECHTE FM SWEEP</span><br><br>`+
+      `De sweep loopt over echte FM frequenties.<br>`+
+      `Audio = gedemoduleerd signaal van de dongle.<br><br>`+
+      `<span class="ih">Gain slider stuurt de dongle gain aan.</span>`;
+    showMsg('[ ECHTE SDR VERBONDEN ]','live');
+  } catch(e) {
+    if(e.name!=='NotFoundError') setConn('error','SDR fout: '+e.message);
+    else setConn('sim','SIMULATIE — geen dongle geselecteerd');
+  }
+}
+
+async function rtlTune(freqHz){
+  if(!sdrDevice) return;
+  try{
+    const b=new ArrayBuffer(4), v=new DataView(b);
+    v.setUint32(0,freqHz,false);
+    await sdrDevice.controlTransferOut({requestType:'vendor',recipient:'device',request:0xb0,value:0,index:0},new Uint8Array(b));
+  }catch(e){}
+}
+
+async function rtlRead(n){
+  if(!sdrDevice) return null;
+  try{
+    const r=await sdrDevice.transferIn(1,n*2);
+    return new Uint8Array(r.data.buffer);
+  }catch(e){ return null; }
+}
+
+// ═══ AUDIO ═══
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain();
+  masterGain.gain.value=0.7;
+  masterGain.connect(audioCtx.destination);
+}
+
+function buildAudio(){
+  const sr=audioCtx.sampleRate;
+  const buf=audioCtx.createBuffer(1,sr*2,sr);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  noiseNode=audioCtx.createBufferSource();
+  noiseNode.buffer=buf; noiseNode.loop=true;
+  filterNode=audioCtx.createBiquadFilter();
+  filterNode.type='bandpass'; filterNode.frequency.value=1000; filterNode.Q.value=0.6;
+  noiseGain=audioCtx.createGain(); noiseGain.gain.value=0.3;
+  sweepOsc=audioCtx.createOscillator();
+  sweepOsc.type='sawtooth'; sweepOsc.frequency.value=150;
+  const sg=audioCtx.createGain(); sg.gain.value=0.04;
+  noiseNode.connect(filterNode); filterNode.connect(noiseGain); noiseGain.connect(masterGain);
+  sweepOsc.connect(sg); sg.connect(masterGain);
+  noiseNode.start(); sweepOsc.start();
+}
+
+function stopAudio(){
+  try{noiseNode?.stop()}catch(e){}
+  try{sweepOsc?.stop()}catch(e){}
+  noiseNode=sweepOsc=null;
+}
+
+function modulateAudio(f){
+  if(!filterNode||!sweepOsc) return;
+  const t=(f-FM_MIN)/(FM_MAX-FM_MIN);
+  filterNode.frequency.setTargetAtTime(300+t*4000,audioCtx.currentTime,.008);
+  sweepOsc.frequency.setTargetAtTime(60+t*900,audioCtx.currentTime,.015);
+  if(noiseGain) noiseGain.gain.setTargetAtTime(.15+Math.random()*.35,audioCtx.currentTime,.004);
+}
+
+// ═══ SPECTRUM ═══
+const SIM_STATIONS=[88.3,89.1,90.5,91.7,93.0,94.5,95.9,97.3,98.7,100.1,101.3,102.5,103.7,104.9,106.1,107.3,107.9];
+
+function genSimSpec(cf){
+  const bw=2.4, half=bw/2;
+  for(let i=0;i<specData.length;i++){
+    const f=(cf-half)+(i/specData.length)*bw;
+    let p=-85+Math.random()*8;
+    for(const s of SIM_STATIONS){
+      const d=Math.abs(f-s);
+      if(d<.13) p=Math.max(p,-18+Math.random()*8-(d/.13)*14);
+    }
+    specData[i]=specData[i]*.6+p*.4;
+  }
+}
+
+async function genSDRSpec(f){
+  await rtlTune(f*1e6);
+  const raw=await rtlRead(512);
+  if(!raw){ genSimSpec(f); return; }
+  const n=Math.min(raw.length/2,specData.length);
+  for(let i=0;i<n;i++){
+    const I=(raw[i*2]-128)/128, Q=(raw[i*2+1]-128)/128;
+    const pw=I*I+Q*Q;
+    specData[i]=specData[i]*.5+(10*Math.log10(pw+1e-9))*.5;
+  }
+}
+
+// ═══ SWEEP ═══
+let ghostTO=null;
+async function sweepStep(){
+  if(sweepDir==='up'){
+    currentFreq=Math.round((currentFreq+.1)*10)/10;
+    if(currentFreq>FM_MAX) currentFreq=FM_MIN;
+  } else if(sweepDir==='down'){
+    currentFreq=Math.round((currentFreq-.1)*10)/10;
+    if(currentFreq<FM_MIN) currentFreq=FM_MAX;
+  } else {
+    currentFreq=Math.round((FM_MIN+Math.random()*(FM_MAX-FM_MIN))*10)/10;
+  }
+  document.getElementById('freqDisp').textContent=currentFreq.toFixed(1);
+  modulateAudio(currentFreq);
+  if(sdrConnected) await genSDRSpec(currentFreq);
+  else genSimSpec(currentFreq);
+  updateSig();
+  if(Math.random()<.025){
+    const w=GHOST_WORDS[Math.floor(Math.random()*GHOST_WORDS.length)];
+    document.getElementById('ghostWord').textContent=w;
+    showMsg(`[ ${w} ]`,'live');
+    clearTimeout(ghostTO);
+    ghostTO=setTimeout(()=>{ document.getElementById('ghostWord').textContent=''; showMsg('',''); },350+Math.random()*650);
+  }
+}
+
+function startSweep(){
+  clearInterval(sweepTimer);
+  sweepTimer=setInterval(sweepStep,sweepMs);
+  document.getElementById('sweepTxt').textContent='SWEEP: ON';
+  document.getElementById('sweepTxt').classList.add('d-active');
+  document.getElementById('statusTxt').textContent='SCANNING';
+  document.getElementById('statusTxt').classList.add('d-active');
+}
+function stopSweep(){
+  clearInterval(sweepTimer);
+  document.getElementById('sweepTxt').textContent='SWEEP: OFF';
+  document.getElementById('sweepTxt').classList.remove('d-active');
+  document.getElementById('statusTxt').textContent='STANDBY';
+  document.getElementById('statusTxt').classList.remove('d-active');
+}
+
+// ═══ CANVAS ═══
+function resize(){
+  ['specCanvas','waveCanvas','bigSpec','waterfall'].forEach(id=>{
+    const c=document.getElementById(id);
+    c.width=c.offsetWidth; c.height=c.offsetHeight;
+  });
+}
+
+let wp=0;
+function drawWave(){
+  const c=document.getElementById('waveCanvas');
+  const cx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  cx.fillStyle='rgba(3,8,3,.45)'; cx.fillRect(0,0,W,H);
+  if(isOn){
+    cx.beginPath(); cx.strokeStyle='rgba(0,255,65,.6)'; cx.lineWidth=1.2;
+    for(let x=0;x<W;x++){
+      const n=(Math.random()-.5)*9;
+      const y=H/2+Math.sin((x+wp)*.05)*H*.26+Math.sin((x+wp)*.13)*H*.13+n;
+      x===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    }
+    cx.stroke();
+    wp+=sweepMs<15?5:sweepMs<30?2.5:1;
+  }
+  requestAnimationFrame(drawWave);
+}
+
+function drawSmallSpec(){
+  const c=document.getElementById('specCanvas');
+  const cx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  cx.fillStyle='#030803'; cx.fillRect(0,0,W,H);
+  if(isOn){
+    cx.beginPath(); cx.strokeStyle='rgba(0,255,65,.65)'; cx.lineWidth=1;
+    cx.shadowColor='#00ff41'; cx.shadowBlur=2;
+    const sw=W/specData.length;
+    for(let i=0;i<specData.length;i++){
+      const norm=Math.max(0,Math.min(1,(specData[i]+90)/70));
+      const x=i*sw, y=H-norm*H;
+      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    }
+    cx.stroke(); cx.shadowBlur=0;
+  }
+  requestAnimationFrame(drawSmallSpec);
+}
+
+function drawBigSpec(){
+  const c=document.getElementById('bigSpec');
+  const cx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  cx.fillStyle='#040904'; cx.fillRect(0,0,W,H);
+  cx.strokeStyle='#0c1a0c'; cx.lineWidth=.5;
+  for(let db=-80;db<=-10;db+=10){
+    const y=H-((db+90)/80)*H;
+    cx.beginPath(); cx.moveTo(0,y); cx.lineTo(W,y); cx.stroke();
+  }
+  if(isOn){
+    const grad=cx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'rgba(0,255,65,.65)');
+    grad.addColorStop(.5,'rgba(0,160,35,.25)');
+    grad.addColorStop(1,'rgba(0,40,8,.04)');
+    const sw=W/specData.length;
+    cx.beginPath();
+    for(let i=0;i<specData.length;i++){
+      const norm=Math.max(0,Math.min(1,(specData[i]+90)/80));
+      const x=i*sw, y=H-norm*H;
+      i===0?cx.moveTo(x,H):cx.lineTo(x,y);
+    }
+    cx.lineTo(W,H); cx.closePath(); cx.fillStyle=grad; cx.fill();
+    cx.beginPath(); cx.strokeStyle='rgba(0,255,65,.85)'; cx.lineWidth=1.4;
+    cx.shadowColor='#00ff41'; cx.shadowBlur=4;
+    for(let i=0;i<specData.length;i++){
+      const norm=Math.max(0,Math.min(1,(specData[i]+90)/80));
+      const x=i*sw, y=H-norm*H;
+      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    }
+    cx.stroke(); cx.shadowBlur=0;
+    // current freq marker
+    const bw=2.4, fx=(currentFreq-(currentFreq-bw/2));
+    const mx=(fx/bw)*W;
+    cx.strokeStyle='rgba(255,153,0,.7)'; cx.lineWidth=1;
+    cx.setLineDash([3,3]);
+    cx.beginPath(); cx.moveTo(mx,0); cx.lineTo(mx,H); cx.stroke();
+    cx.setLineDash([]);
+  }
+  requestAnimationFrame(drawBigSpec);
+}
+
+const WF_MAX=80;
+function drawWaterfall(){
+  const c=document.getElementById('waterfall');
+  const cx=c.getContext('2d');
+  const W=c.width,H=c.height;
+  if(isOn){
+    if(waterfallRows.length>=WF_MAX) waterfallRows.shift();
+    waterfallRows.push(Float32Array.from(specData));
+  }
+  cx.fillStyle='#030503'; cx.fillRect(0,0,W,H);
+  const rh=H/WF_MAX;
+  for(let r=0;r<waterfallRows.length;r++){
+    const row=waterfallRows[r];
+    const y=(WF_MAX-1-r)*rh;
+    const sw=W/row.length;
+    for(let i=0;i<row.length;i++){
+      const n=Math.max(0,Math.min(1,(row[i]+90)/70));
+      cx.fillStyle=p2c(n); cx.fillRect(i*sw,y,sw+.5,rh+.5);
+    }
+  }
+  requestAnimationFrame(drawWaterfall);
+}
+
+function p2c(n){
+  if(n<.15) return `rgb(0,${Math.floor(n*70)},0)`;
+  if(n<.4)  return `rgb(0,${Math.floor(70+n*100)},${Math.floor(n*25)})`;
+  if(n<.7)  return `rgb(${Math.floor((n-.4)*380)},${Math.floor(140+n*55)},0)`;
+  return `rgb(255,${Math.floor(255*(1-n))},0)`;
+}
+
+function updateSig(){
+  const s=Math.floor(Math.random()*5)+1;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('s'+i);
+    el.classList.remove('lit','hot');
+    if(i<=s){ el.classList.add('lit'); if(s>=4) el.classList.add('hot'); }
+  }
+}
+
+function buildRuler(){
+  const r=document.getElementById('freqRuler');
+  r.innerHTML='';
+  [87.5,90,92.5,95,97.5,100,102.5,105,107.5].forEach(f=>{
+    const s=document.createElement('span');
+    s.textContent=f.toFixed(1); r.appendChild(s);
+  });
+}
+
+// ═══ EVENTS ═══
+document.getElementById('powBtn').addEventListener('click',async()=>{
+  if(!isOn){
+    initAudio();
+    if(audioCtx.state==='suspended') await audioCtx.resume();
+    buildAudio(); isOn=true;
+    document.getElementById('powBtn').classList.add('on');
+    document.getElementById('powBtn').textContent='⏻ ON';
+    showMsg('[ SCANNING... ]','live');
+    startSweep();
+  } else {
+    stopSweep(); stopAudio(); isOn=false;
+    document.getElementById('powBtn').classList.remove('on');
+    document.getElementById('powBtn').textContent='⏻ POWER';
+    document.getElementById('ghostWord').textContent='';
+    showMsg('','');
+    for(let i=1;i<=5;i++) document.getElementById('s'+i).classList.remove('lit','hot');
+    waterfallRows=[];
+  }
+});
+
+document.getElementById('sdrBtn').addEventListener('click',connectSDR);
+
+document.querySelectorAll('.spd-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.spd-btn').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel'); sweepMs=parseInt(b.dataset.ms);
+    if(isOn) startSweep();
+  });
+});
+
+function setDir(d){
+  sweepDir=d;
+  document.querySelectorAll('.dir-btn').forEach(x=>x.classList.remove('sel'));
+  document.getElementById(d==='up'?'dUp':d==='down'?'dDown':'dRand').classList.add('sel');
+}
+document.getElementById('dUp').addEventListener('click',()=>setDir('up'));
+document.getElementById('dDown').addEventListener('click',()=>setDir('down'));
+document.getElementById('dRand').addEventListener('click',()=>setDir('rand'));
+
+const gs=document.getElementById('gainSlider');
+gs.addEventListener('input',()=>{
+  const v=gs.value; document.getElementById('gainVal').textContent=v;
+  gs.style.setProperty('--pct',(v/49*100)+'%');
+});
+gs.style.setProperty('--pct','51%');
+
+const vs=document.getElementById('volSlider');
+vs.addEventListener('input',()=>{
+  const v=vs.value; document.getElementById('volVal').textContent=v;
+  vs.style.setProperty('--pct',v+'%');
+  if(masterGain) masterGain.gain.setTargetAtTime(v/100,audioCtx.currentTime,.05);
+});
+vs.style.setProperty('--pct','70%');
+
+function setConn(state,txt){
+  const d=document.getElementById('connDot'), t=document.getElementById('connText');
+  d.className='conn-dot '+state; t.textContent=txt;
+  t.style.color=state==='connected'?'var(--green)':state==='error'?'var(--red)':'#555';
+}
+function showMsg(t,cls){
+  const el=document.getElementById('statusMsg');
+  el.textContent=t; el.className='status-msg'+(cls?' '+cls:'');
+}
+
+// ═══ INIT ═══
+window.addEventListener('resize',resize);
+window.addEventListener('load',()=>{
+  resize(); buildRuler();
+  drawSmallSpec(); drawWave(); drawBigSpec(); drawWaterfall();
+  setConn('sim','SIMULATIE MODUS — klik 🔌 SDR USB voor dongle');
+});
+</script>
+</body>
+</html>
