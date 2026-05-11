@@ -1,4 +1,4 @@
-# PXB-11 SDR Spirit Box
+# PXB-12 SDR Spirit Box
 
 > **Een volledig browser-gebaseerde Spirit Box met echte SDR-dongle ondersteuning**  
 > Gebouwd met pure HTML5, CSS3 en Vanilla JavaScript — geen installatie vereist.
